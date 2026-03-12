@@ -36,7 +36,7 @@ pipeline {
             steps {
                 echo 'Running Angular Headless Tests...'
                 dir('frontend') {
-                    sh 'npm ci'
+                    sh 'npm install'
                     sh 'npx ng test --watch=false --browsers=ChromeHeadless'
                 }
             }
