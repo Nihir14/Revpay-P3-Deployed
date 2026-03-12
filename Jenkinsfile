@@ -10,7 +10,7 @@ pipeline {
             steps {
                 echo 'Running Spring Boot Microservices Tests...'
                 dir('backend') {
-                    sh 'mvn clean package' // Packages the JARs and runs your passing tests
+                    sh 'mvn clean verify -T 1C' // Packages the JARs and runs your passing tests
                 }
             }
         }

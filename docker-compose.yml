@@ -1,14 +1,12 @@
-version: '3.8'
-
 networks:
   revpay-network:
     driver: bridge
 
 volumes:
   mysql-data:
-  sonarqube_data_fresh:       # <-- Added _fresh
-  sonarqube_extensions_fresh: # <-- Added _fresh
-  sonarqube_logs_fresh:       # <-- Added _fresh
+  sonarqube_data_fresh:
+  sonarqube_extensions_fresh:
+  sonarqube_logs_fresh:
 
 services:
   # ==========================================
@@ -36,15 +34,19 @@ services:
     image: sonarqube:lts-community
     container_name: revpay-sonarqube
     ports:
-      - "9005:9000"           # <-- THE MAGIC PORT
+      - "9005:9000"
     environment:
       - SONAR_FORCEAUTHENTICATION=false
     volumes:
-      - sonarqube_data_fresh:/opt/sonarqube/data             # <-- Updated
-      - sonarqube_extensions_fresh:/opt/sonarqube/extensions # <-- Updated
-      - sonarqube_logs_fresh:/opt/sonarqube/logs             # <-- Updated
+      - sonarqube_data_fresh:/opt/sonarqube/data
+      - sonarqube_extensions_fresh:/opt/sonarqube/extensions
+      - sonarqube_logs_fresh:/opt/sonarqube/logs
     networks:
       - revpay-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G # Prevents SonarQube from eating all your laptop's RAM
 
   # ==========================================
   # SPRING CLOUD INFRASTRUCTURE
@@ -94,15 +96,18 @@ services:
     build: ./backend/microservices/user-service
     container_name: revpay-user-service
     ports:
-      - "8081:8081"
+      - "8081:8081" # Left open so you can easily access Swagger locally
     environment:
       - DB_HOST=mysql-db
       - EUREKA_HOST=discovery-server
+      - CONFIG_HOST=config-server
     networks:
       - revpay-network
     depends_on:
       mysql-db:
         condition: service_healthy
+      config-server:
+        condition: service_started
       discovery-server:
         condition: service_started
 
@@ -114,11 +119,14 @@ services:
     environment:
       - DB_HOST=mysql-db
       - EUREKA_HOST=discovery-server
+      - CONFIG_HOST=config-server
     networks:
       - revpay-network
     depends_on:
       mysql-db:
         condition: service_healthy
+      config-server:
+        condition: service_started
       discovery-server:
         condition: service_started
 
@@ -130,11 +138,14 @@ services:
     environment:
       - DB_HOST=mysql-db
       - EUREKA_HOST=discovery-server
+      - CONFIG_HOST=config-server
     networks:
       - revpay-network
     depends_on:
       mysql-db:
         condition: service_healthy
+      config-server:
+        condition: service_started
       discovery-server:
         condition: service_started
 
@@ -146,11 +157,14 @@ services:
     environment:
       - DB_HOST=mysql-db
       - EUREKA_HOST=discovery-server
+      - CONFIG_HOST=config-server
     networks:
       - revpay-network
     depends_on:
       mysql-db:
         condition: service_healthy
+      config-server:
+        condition: service_started
       discovery-server:
         condition: service_started
 
@@ -168,9 +182,9 @@ services:
     depends_on:
       mysql-db:
         condition: service_healthy
-      discovery-server:
-        condition: service_started
       config-server:
+        condition: service_started
+      discovery-server:
         condition: service_started
 
   notification-service:
@@ -187,43 +201,20 @@ services:
     depends_on:
       mysql-db:
         condition: service_healthy
-      discovery-server:
-        condition: service_started
       config-server:
+        condition: service_started
+      discovery-server:
         condition: service_started
 
   # ==========================================
   # FRONTEND UI
   # ==========================================
   frontend:
-    build: ./frontend  # Ensure this points to your frontend folder (containing its Dockerfile)
+    build: ./frontend
     container_name: revpay-frontend
     ports:
-      - "4200:80"  # Assuming standard Nginx Docker setup. If using `ng serve`, change to "4200:4200"
+      - "4200:80"
     networks:
       - revpay-network
     depends_on:
       - api-gateway
-
-  # ==========================================
-  # TEMPORARY MAVEN SCANNER
-  # ==========================================
-  sonar-scanner:
-    image: maven:3.9.6-eclipse-temurin-17-alpine
-    container_name: code-scanner
-    volumes:
-      - ./backend:/app  # Mounts just the backend folder so Maven finds the root pom.xml
-    working_dir: /app
-    networks:
-      - revpay-network
-    # Use array syntax for the command to prevent string formatting errors in Docker
-    command:
-      - "mvn"
-      - "clean"
-      - "verify"
-      - "sonar:sonar"
-      - "-Dsonar.projectKey=revpay-backend"
-      - "-Dsonar.host.url=http://sonarqube:9000"  # Uses internal Docker network name
-      - "-Dsonar.token=REPLACE_ME_WITH_YOUR_ACTUAL_TOKEN"
-    profiles:
-      - testing # Hides it from normal 'docker compose up'
