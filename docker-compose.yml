@@ -1,0 +1,229 @@
+version: '3.8'
+
+networks:
+  revpay-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  sonarqube_data_fresh:       # <-- Added _fresh
+  sonarqube_extensions_fresh: # <-- Added _fresh
+  sonarqube_logs_fresh:       # <-- Added _fresh
+
+services:
+  # ==========================================
+  # INFRASTRUCTURE (Databases & Tools)
+  # ==========================================
+  mysql-db:
+    image: mysql:8.0
+    container_name: revpay-mysql-central
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-Vijay@2003}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - revpay-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-Vijay@2003}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: revpay-sonarqube
+    ports:
+      - "9005:9000"           # <-- THE MAGIC PORT
+    environment:
+      - SONAR_FORCEAUTHENTICATION=false
+    volumes:
+      - sonarqube_data_fresh:/opt/sonarqube/data             # <-- Updated
+      - sonarqube_extensions_fresh:/opt/sonarqube/extensions # <-- Updated
+      - sonarqube_logs_fresh:/opt/sonarqube/logs             # <-- Updated
+    networks:
+      - revpay-network
+
+  # ==========================================
+  # SPRING CLOUD INFRASTRUCTURE
+  # ==========================================
+  config-server:
+    build: ./backend/infrastructure/config-server
+    container_name: revpay-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - CONFIG_REPO_PATH=/config-repo
+    networks:
+      - revpay-network
+
+  discovery-server:
+    build: ./backend/infrastructure/discovery-server
+    container_name: revpay-discovery-server
+    ports:
+      - "8761:8761"
+    networks:
+      - revpay-network
+    depends_on:
+      - config-server
+
+  api-gateway:
+    build: ./backend/infrastructure/api-gateway
+    container_name: revpay-api-gateway
+    ports:
+      - "8095:8095"
+    environment:
+      - EUREKA_HOST=discovery-server
+      - USER_SERVICE_HOST=user-service
+      - WALLET_SERVICE_HOST=wallet-service
+      - TRANSACTION_SERVICE_HOST=transaction-service
+      - INVOICE_SERVICE_HOST=invoice-service
+      - LOAN_SERVICE_HOST=loan-service
+      - NOTIFICATION_SERVICE_HOST=notification-service
+    networks:
+      - revpay-network
+    depends_on:
+      - discovery-server
+
+  # ==========================================
+  # DOMAIN MICROSERVICES
+  # ==========================================
+  user-service:
+    build: ./backend/microservices/user-service
+    container_name: revpay-user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=mysql-db
+      - EUREKA_HOST=discovery-server
+    networks:
+      - revpay-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+
+  wallet-service:
+    build: ./backend/microservices/wallet-service
+    container_name: revpay-wallet-service
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_HOST=mysql-db
+      - EUREKA_HOST=discovery-server
+    networks:
+      - revpay-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+
+  transaction-service:
+    build: ./backend/microservices/transaction-service
+    container_name: revpay-transaction-service
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_HOST=mysql-db
+      - EUREKA_HOST=discovery-server
+    networks:
+      - revpay-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+
+  invoice-service:
+    build: ./backend/microservices/invoice-service
+    container_name: revpay-invoice-service
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_HOST=mysql-db
+      - EUREKA_HOST=discovery-server
+    networks:
+      - revpay-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+
+  loan-service:
+    build: ./backend/microservices/loan-service
+    container_name: revpay-loan-service
+    ports:
+      - "8085:8085"
+    environment:
+      - DB_HOST=mysql-db
+      - EUREKA_HOST=discovery-server
+      - CONFIG_HOST=config-server
+    networks:
+      - revpay-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      config-server:
+        condition: service_started
+
+  notification-service:
+    build: ./backend/microservices/notification-service
+    container_name: revpay-notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      - DB_HOST=mysql-db
+      - EUREKA_HOST=discovery-server
+      - CONFIG_HOST=config-server
+    networks:
+      - revpay-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+      config-server:
+        condition: service_started
+
+  # ==========================================
+  # FRONTEND UI
+  # ==========================================
+  frontend:
+    build: ./frontend  # Ensure this points to your frontend folder (containing its Dockerfile)
+    container_name: revpay-frontend
+    ports:
+      - "4200:80"  # Assuming standard Nginx Docker setup. If using `ng serve`, change to "4200:4200"
+    networks:
+      - revpay-network
+    depends_on:
+      - api-gateway
+
+  # ==========================================
+  # TEMPORARY MAVEN SCANNER
+  # ==========================================
+  sonar-scanner:
+    image: maven:3.9.6-eclipse-temurin-17-alpine
+    container_name: code-scanner
+    volumes:
+      - ./backend:/app  # Mounts just the backend folder so Maven finds the root pom.xml
+    working_dir: /app
+    networks:
+      - revpay-network
+    # Use array syntax for the command to prevent string formatting errors in Docker
+    command:
+      - "mvn"
+      - "clean"
+      - "verify"
+      - "sonar:sonar"
+      - "-Dsonar.projectKey=revpay-backend"
+      - "-Dsonar.host.url=http://sonarqube:9000"  # Uses internal Docker network name
+      - "-Dsonar.token=REPLACE_ME_WITH_YOUR_ACTUAL_TOKEN"
+    profiles:
+      - testing # Hides it from normal 'docker compose up'

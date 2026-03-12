@@ -1,0 +1,49 @@
+<div class="admin-container">
+
+  <div class="admin-body">
+    <!-- Sidebar Navigation -->
+    <aside class="admin-sidebar">
+      <ul class="nav flex-column sidebar-nav">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/admin/dashboard" routerLinkActive="active">
+            <i class="fas fa-chart-line"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/admin/users" routerLinkActive="active">
+            <i class="fas fa-users"></i> User Management
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/admin/businesses" routerLinkActive="active">
+            <i class="fas fa-building"></i> Businesses
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/admin/ledger" routerLinkActive="active">
+            <i class="fas fa-book"></i> System Ledger
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/admin/loans" routerLinkActive="active">
+            <i class="fas fa-hand-holding-usd"></i> Loan Approvals
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/dashboard" routerLinkActive="active"
+            [routerLinkActiveOptions]="{exact: true}">
+            <i class="fas fa-wallet"></i> My Wallet
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="admin-content">
+      <div class="content-wrapper">
+        <!-- This is where the child routes will be injected -->
+        <router-outlet></router-outlet>
+      </div>
+    </main>
+  </div>
+</div>

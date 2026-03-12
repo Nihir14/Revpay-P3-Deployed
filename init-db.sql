@@ -1,0 +1,6 @@
+CREATE DATABASE IF NOT EXISTS revpay_user_db;
+CREATE DATABASE IF NOT EXISTS revpay_wallet_db;
+CREATE DATABASE IF NOT EXISTS revpay_transaction_db;
+CREATE DATABASE IF NOT EXISTS revpay_invoice_db;
+CREATE DATABASE IF NOT EXISTS revpay_loan_db;
+CREATE DATABASE IF NOT EXISTS revpay_notification_db;

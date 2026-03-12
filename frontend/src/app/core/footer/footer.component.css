@@ -1,0 +1,47 @@
+.revpay-footer {
+    background-color: var(--card-bg-dark, #1a2332);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    margin-top: 4rem;
+    /* Add some space above the footer globally */
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.footer-link {
+    color: #9ba4b5;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.footer-link i {
+    font-size: 1rem;
+}
+
+.footer-link:hover {
+    color: var(--primary-color, #0d6efd);
+    text-decoration: none;
+    transform: translateX(2px);
+}
+
+.social-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #9ba4b5;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.social-icon:hover {
+    background-color: var(--primary-color, #0d6efd);
+    color: #ffffff;
+    transform: translateY(-3px);
+}
